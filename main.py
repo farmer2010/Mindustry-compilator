@@ -15,14 +15,19 @@ for (num h = 0;  h< 8; h++){
 
 }
 str f = "{aaa;;;}";
+num c = 10;
+num i = 0;
+while (i < c){
+print(i);
+}
 """
 
 #+   первый уровень - разделение кода на блоки, удаление комментариев и пробелов перед строками
 #+   второй уровень - разделение цикла for
-#-   третий уровень - токенайзер
-#-   четвертый уровень - вычленение из блоков значимой части
-#-   пятый уровень - удаление пробелов в математических выражениях
-#-   шестой уровень - преобразование математических выражений и прочего
+#+   третий уровень - токенайзер
+#-   четвертый уровень -
+#-   пятый уровень -
+#-   шестой уровень -
 
 def compile(code):
     #
@@ -113,26 +118,36 @@ def compile(code):
     #
     lines_level3 = []
     words = ["if", "elif", "else", "while"]
-    symb = ["}", "(", ")", "=", "+=", "-=", "*=", "/=", "+", "-", "*", "/", "==", ">", "<", ">=", "<=", "!=", "'", '"']
+    symb = ["}", "(", ")", "=", "+=", "-=", "*=", "/=", "+", "-", "*", "/", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "==="]
     tokens = ["if", "elif", "while", "num", "str", "bool", "obj", "id", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "+", "-", "*", "/"]
     spaces = [" ", "\t", "\n"]
     for l in lines_level2:
         line = ""
         cmd = []
         txt = 0
-        last_symbol = ""
-        i = 0
-        for symbol in l:
+        token_type = None
+        for i in range(len(l)):
+            symbol = l[i]
+            if i < len(l) - 1:
+                next_symbol = l[i+1]
+            else:
+                next_symbol = ""
             if symbol == "'" or symbol == '"':
                 txt = not txt
-            if (not txt and (symbol in spaces or symbol in symb or i == len(l) - 1)) or (txt and (symbol == "'" or symbol == '"')):
+            if token_type == None:
+                if txt and (symbol == "'" or symbol == '"'):
+                    token_type = "string"
+                elif symbol in symb:
+                    token_type = "special symbol"
+                elif not symbol in spaces:
+                    token_type = "word"
+            if txt or (not symbol in spaces and ((token_type == "word" and not symbol in symb) or (token_type == "special symbol" and symbol in symb))):
+                line += symbol
+            if (not txt and ((token_type == "word" and (next_symbol in spaces or next_symbol in symb)) or (token_type == "special symbol" and not line + next_symbol in symb))) or i == len(l) - 1:
                 if line != "":
                     cmd.append(line)
+                    token_type = None
                     line = ""
-            if txt or (not symbol in spaces):
-                line += symbol
-            last_symbol = symbol
-            i += 1
         lines_level3.append(cmd)
     #
     #четвертый уровень
