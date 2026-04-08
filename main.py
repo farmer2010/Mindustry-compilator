@@ -20,13 +20,49 @@ num i = 0;
 while (i < c){
 print(i);
 }
+if (a+2*(3-  i) > 0){
+print(1);
+}else if (a<10){
+print(2);
+}else{
+print(3);
+}
+num c;
 """
+text = "else{print(1);}"
+
+words = ["if", "else", "while", "num", "bool", "obj", "id", "break", "continue", "null"]
+symb = ["{", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "%=", "//=", "+", "-", "*", "/", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "==="]
+tokens = ["if", "elif", "while", "num", "str", "bool", "obj", "id", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "+", "-", "*", "/"]
+spaces = [" ", "\t", "\n"]
+
+class Token():
+    def __init__(self, text):
+        self.type = None
+        if text in words:
+            self.type = "word"
+        elif '"' in text or "'" in text:
+            self.type = "string"
+        elif text in symb:
+            self.type = "special symbol"
+        else:
+            self.type = "variable"
+        self.text = text
+
+    def __eq__(self, other):
+        return(self.text == other)
+
+    def __str__(self):
+        return(self.text)
+
+    def __repr__(self):
+        return("'" + self.text + "'")
 
 #+   первый уровень - разделение кода на блоки, удаление комментариев и пробелов перед строками
 #+   второй уровень - разделение цикла for
 #+   третий уровень - токенайзер
-#-   четвертый уровень -
-#-   пятый уровень -
+#+   четвертый уровень - небольшие преобразования команд
+#-   пятый уровень - преобразование математических выражений
 #-   шестой уровень -
 
 def compile(code):
@@ -46,13 +82,18 @@ def compile(code):
                 start = 0
             if symbol == "'" or symbol == '"':
                 string = not string
-            if (symbol == ";" or symbol == "{") and not string and not for_cycle:
-                lines_level1.append(line)
-                line = ""
-                start = 1
+            if not string and not for_cycle:
+                if symbol == ";":
+                    lines_level1.append(line)
+                    line = ""
+                    start = 1
+                elif symbol == "{":
+                    lines_level1.append(line + "{")
+                    line = ""
+                    start = 1
             if for_cycle and symbol == "{":
                 for_cycle = 0
-                lines_level1.append(line)
+                lines_level1.append(line + "{")
                 line = ""
                 start = 1
             if symbol == "}" and not string:
@@ -107,20 +148,13 @@ def compile(code):
             lines_level2.append(line)
         else:
             lines_level2.append(cmds[0])
-            lines_level2.append(f"while ({cmds[1]})")
+            lines_level2.append(f"while ({cmds[1]})" + "{")
             lines_level2.append(cmds[2])
-    for line in lines_level2:
-        print(line)
-    print("")
     #
     #третий уровень
     #токенайзер
     #
     lines_level3 = []
-    words = ["if", "elif", "else", "while"]
-    symb = ["}", "(", ")", "=", "+=", "-=", "*=", "/=", "+", "-", "*", "/", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "==="]
-    tokens = ["if", "elif", "while", "num", "str", "bool", "obj", "id", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "+", "-", "*", "/"]
-    spaces = [" ", "\t", "\n"]
     for l in lines_level2:
         line = ""
         cmd = []
@@ -132,26 +166,66 @@ def compile(code):
                 next_symbol = l[i+1]
             else:
                 next_symbol = ""
+            #
             if symbol == "'" or symbol == '"':
                 txt = not txt
+            #
             if token_type == None:
-                if txt and (symbol == "'" or symbol == '"'):
+                if symbol == "'" or symbol == '"':
                     token_type = "string"
-                elif symbol in symb:
+                elif symbol in symb and (symbol != "'" or symbol != '"'):
                     token_type = "special symbol"
                 elif not symbol in spaces:
                     token_type = "word"
-            if txt or (not symbol in spaces and ((token_type == "word" and not symbol in symb) or (token_type == "special symbol" and symbol in symb))):
+            if token_type == "string" or (not symbol in spaces and (
+                    (token_type == "word" and not symbol in symb) or
+                    (token_type == "special symbol" and symbol in symb)
+            )):
                 line += symbol
-            if (not txt and ((token_type == "word" and (next_symbol in spaces or next_symbol in symb)) or (token_type == "special symbol" and not line + next_symbol in symb))) or i == len(l) - 1:
+            #
+            if (token_type == "word" and (next_symbol in spaces or next_symbol in symb)) or \
+                    (token_type == "special symbol" and not line + next_symbol in symb) or \
+                    (token_type == "string" and (symbol == "'" or symbol == '"') and not txt) or \
+                    i == len(l) - 1:
                 if line != "":
-                    cmd.append(line)
+                    cmd.append(Token(line))
                     token_type = None
                     line = ""
+
         lines_level3.append(cmd)
     #
     #четвертый уровень
-    #синтаксис: ["название команды", "параметр1", "параметр2"...]
+    #небольшие преобразования команд
+    #
+    for i in range(len(lines_level3)):
+        line = lines_level3[i]
+        if len(line) >= 2:
+            if not line[0] in words:
+                if line[1] == "++":
+                    lines_level3[i] = [line[0], Token("="), line[0], Token("+"), Token("1")]
+                elif line[1] == "--":
+                    lines_level3[i] = [line[0], Token("="), line[0], Token("-"), Token("1")]
+                elif line[1] == "+=":
+                    lines_level3[i] = [line[0], Token("="), line[0], Token("+")] + line[2:]
+                elif line[1] == "-=":
+                    lines_level3[i] = [line[0], Token("="), line[0], Token("-")] + line[2:]
+                elif line[1] == "*=":
+                    lines_level3[i] = [line[0], Token("="), line[0], Token("*")] + line[2:]
+                elif line[1] == "/=":
+                    lines_level3[i] = [line[0], Token("="), line[0], Token("/")] + line[2:]
+                elif line[1] == "%=":
+                    lines_level3[i] = [line[0], Token("="), line[0], Token("%")] + line[2:]
+                elif line[1] == "//=":
+                    lines_level3[i] = [line[0], Token("="), line[0], Token("//")] + line[2:]
+        if (line[0] == "num" or line[0] == "str" or line[0] == "bool" or line[0] == "obj" or line[0] == "id") and len(line) == 2:
+            lines_level3[i] = [line[0], line[1], Token("="), Token("null")]
+    #
+    #пятый уровень
+    #
+    lines_level5 = []
+    for l in lines_level3:
+        for i in range(len(l)):
+            token = l[i]
     #
     return(lines_level3)
 
