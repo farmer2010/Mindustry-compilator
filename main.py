@@ -29,18 +29,26 @@ print(3);
 }
 num c;
 """
-text = "else{print(1);}"
+#text = "else{print(1);}"
 
-words = ["if", "else", "while", "num", "bool", "obj", "id", "break", "continue", "null"]
+words = ["if", "else", "while", "num", "bool", "obj", "id", "break", "continue", "null", "print"]
 symb = ["{", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "%=", "//=", "+", "-", "*", "/", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "==="]
 tokens = ["if", "elif", "while", "num", "str", "bool", "obj", "id", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "+", "-", "*", "/"]
 spaces = [" ", "\t", "\n"]
+
+commands = ["if", "else", "while", "break", "continue", "print"]
+types = ["num", "str", "bool", "obj", "id"]
 
 class Token():
     def __init__(self, text):
         self.type = None
         if text in words:
-            self.type = "word"
+            if text in commands:
+                self.type = "command"
+            elif text in types:
+                self.type = "type"
+            else:
+                self.type = "word"
         elif '"' in text or "'" in text:
             self.type = "string"
         elif text in symb:
@@ -62,7 +70,7 @@ class Token():
 #+   второй уровень - разделение цикла for
 #+   третий уровень - токенайзер
 #+   четвертый уровень - небольшие преобразования команд
-#-   пятый уровень - преобразование математических выражений
+#-   пятый уровень - создание команд из токенов
 #-   шестой уровень -
 
 def compile(code):
@@ -224,10 +232,37 @@ def compile(code):
     #
     lines_level5 = []
     for l in lines_level3:
+        line = []
+        params = []
+        param_ind = 0
         for i in range(len(l)):
             token = l[i]
+            if token == "}" or token == "{" or token.type == "command":
+                line.append(token)
+            elif token.type == "type":
+                line.append("set")
+                line.append(token)
+            #
+            if token == ")":
+                param_ind -= 1
+                if param_ind == 0:
+                    line.append(params)
+                    params = []
+            if param_ind > 0:
+                params.append(token)
+            if token == "(":
+                param_ind += 1
+            #
+            if token.type == "variable":
+                line.append("set")
+                line.append("")
+                
+        lines_level5.append(line)
     #
-    return(lines_level3)
+    for line in lines_level3:
+        print(line)
+    print()
+    return(lines_level5)
 
 res = compile(text)
 for st in res:
