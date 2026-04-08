@@ -70,8 +70,8 @@ class Token():
 #+   второй уровень - разделение цикла for
 #+   третий уровень - токенайзер
 #+   четвертый уровень - небольшие преобразования команд
-#-   пятый уровень - создание команд из токенов
-#-   шестой уровень -
+#+   пятый уровень - преобразование токенов в команды
+#-   шестой уровень - преобразование математических выражений
 
 def compile(code):
     #
@@ -229,36 +229,57 @@ def compile(code):
             lines_level3[i] = [line[0], line[1], Token("="), Token("null")]
     #
     #пятый уровень
+    #преобразование токенов в команды
     #
     lines_level5 = []
     for l in lines_level3:
         line = []
         params = []
-        param_ind = 0
+        bra_count = 0
+        set_command_param = 0
+        p = 0
         for i in range(len(l)):
             token = l[i]
             if token == "}" or token == "{" or token.type == "command":
                 line.append(token)
-            elif token.type == "type":
-                line.append("set")
-                line.append(token)
             #
             if token == ")":
-                param_ind -= 1
-                if param_ind == 0:
+                bra_count -= 1
+                if bra_count == 0:
                     line.append(params)
                     params = []
-            if param_ind > 0:
+            if bra_count > 0:
                 params.append(token)
             if token == "(":
-                param_ind += 1
+                bra_count += 1
             #
-            if token.type == "variable":
+            if set_command_param:
+                if token != "=":
+                    params.append(token)
+                if i == len(l) - 1:
+                    line.append(params)
+                    params = []
+            if token.type == "variable" and i == 0:
                 line.append("set")
                 line.append("")
-                
+                line.append(token)
+                set_command_param = 1
+            if token.type == "type":
+                line.append("set")
+                line.append(token)
+                p = 1
+            if token.type == "variable" and p:
+                line.append(token)
+                set_command_param = 1
+                p = 0
         lines_level5.append(line)
     #
+    #шестой уровень
+    #преобразование математических выражений
+    #
+    lines_level6 = []
+    for l in lines_level5:
+        pass
     for line in lines_level3:
         print(line)
     print()
