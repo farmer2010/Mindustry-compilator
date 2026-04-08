@@ -228,11 +228,19 @@ def compile(code):
         if (line[0] == "num" or line[0] == "str" or line[0] == "bool" or line[0] == "obj" or line[0] == "id") and len(line) == 2:
             lines_level3[i] = [line[0], line[1], Token("="), Token("null")]
     #
+    lines_level4 = []
+    for l in lines_level3:
+        if l[0] == "else" and l[1] == "if":
+            lines_level4.append([Token("else")])
+            lines_level4.append(l[1:])
+        else:
+            lines_level4.append(l)
+    #
     #пятый уровень
     #преобразование токенов в команды
     #
     lines_level5 = []
-    for l in lines_level3:
+    for l in lines_level4:
         line = []
         params = []
         bra_count = 0
@@ -280,7 +288,7 @@ def compile(code):
     lines_level6 = []
     for l in lines_level5:
         pass
-    for line in lines_level3:
+    for line in lines_level4:
         print(line)
     print()
     return(lines_level5)
