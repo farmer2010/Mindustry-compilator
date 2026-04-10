@@ -33,12 +33,12 @@ num c;
 """
 
 words = ["if", "else", "while", "num", "str", "bool", "obj", "id", "break", "continue", "null", "print"]
-symb = ["{", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "%=", "//=", "+", "-", "*", "**", "/", "%", "%%", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "===", "<<", ">>", ">>>", "!", "&&", "||", "&", "~", "^"]
+symb = ["{", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "%=", "//=", "+", "-", "*", "**", "/", "%", "%%", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "===", "<<", ">>", ">>>", "!", "&&", "||", "&", "~", "^", ";"]
 operations = ["+", "-", "*", "/", "//", "%", "%%", "**", ">", "<", ">=", "<=", "==", "===", "!=", "!", "&&", "||", "^", "&", "~", "<<", ">>", ">>>"]
 operations_1_param = ["!", "~"]
 spaces = [" ", "\t", "\n"]
 
-commands = ["if", "else", "while", "break", "continue", "print"]
+commands = ["if", "else", "while", "for", "break", "continue", "print"]
 types = ["num", "str", "bool", "obj", "id"]
 
 prios = {
@@ -84,11 +84,13 @@ class Token():
         return("'" + self.text + "'")
 
 #+   первый уровень - разделение кода на блоки, удаление комментариев и пробелов перед строками
-#+   второй уровень - разделение цикла for
-#+   третий уровень - токенайзер
+#+   второй уровень - токенайзер
+#+   третий уровень - разделение цикла for
 #+   четвертый уровень - небольшие преобразования команд + разделение конструкций else - if
 #+   пятый уровень - преобразование токенов в команды
-#-   шестой уровень - преобразование математических выражений
+#+   шестой уровень - преобразование математических выражений
+#-   седьмой уровень - индексация условий и циклов
+#-   восьмой уровень - замена if и while на goto
 
 def compile(code):
     #
@@ -137,50 +139,11 @@ def compile(code):
             start = 1
         last_symbol = symbol
     #
-    #второй уровень
-    #разделение for
+    #втррой уровень
+    #токенайзер
     #
     lines_level2 = []
     for l in lines_level1:
-        line = ""
-        txt = 0
-        start_cmd = 0
-        start = 0
-        cmd_ind = 0
-        cmds = ["", "", ""]
-        for_cycle = 0
-        for symbol in l:
-            line += symbol
-            if line == "for":
-                for_cycle = 1
-            if for_cycle:
-                if symbol == "'" or symbol == '"':
-                    txt = not txt
-                if txt:
-                    cmds[cmd_ind] += symbol
-                else:
-                    if start_cmd and symbol != " " and symbol != "\t" and symbol != "\n":
-                        start_cmd = 0
-                    if start and start_cmd == 0 and symbol != ";" and symbol != ")":
-                        cmds[cmd_ind] += symbol
-                    if symbol == "(":
-                        start = 1
-                        start_cmd = 1
-                    if symbol == ";":
-                        start_cmd = 1
-                        cmd_ind += 1
-        if not for_cycle:
-            lines_level2.append(line)
-        else:
-            lines_level2.append(cmds[0])
-            lines_level2.append(f"while ({cmds[1]})" + "{")
-            lines_level2.append(cmds[2])
-    #
-    #третий уровень
-    #токенайзер
-    #
-    lines_level3 = []
-    for l in lines_level2:
         line = ""
         cmd = []
         txt = 0
@@ -217,36 +180,57 @@ def compile(code):
                     token_type = None
                     line = ""
 
-        lines_level3.append(cmd)
+        lines_level2.append(cmd)
+    #
+    #третий уровень
+    #разделение цикла for
+    #
+    i = 0
+    while i < len(lines_level2):
+        l = lines_level2[i]
+        if l[0] == "for":
+            ops = []
+            line = []
+            start = 0
+            for token in l:
+                if start and token != ";":
+                    line.append(token)
+                if token == "(":
+                    start = 1
+                if token == ";":
+
+            i += 1
+        i += 1
+    return(lines_level2)
     #
     #четвертый уровень
     #небольшие преобразования команд
     #
-    for i in range(len(lines_level3)):
-        line = lines_level3[i]
+    for i in range(len(lines_level2)):
+        line = lines_level2[i]
         if len(line) >= 2:
             if not line[0] in words:
                 if line[1] == "++":
-                    lines_level3[i] = [line[0], Token("="), line[0], Token("+"), Token("1")]
+                    lines_level2[i] = [line[0], Token("="), line[0], Token("+"), Token("1")]
                 elif line[1] == "--":
-                    lines_level3[i] = [line[0], Token("="), line[0], Token("-"), Token("1")]
+                    lines_level2[i] = [line[0], Token("="), line[0], Token("-"), Token("1")]
                 elif line[1] == "+=":
-                    lines_level3[i] = [line[0], Token("="), line[0], Token("+")] + line[2:]
+                    lines_level2[i] = [line[0], Token("="), line[0], Token("+")] + line[2:]
                 elif line[1] == "-=":
-                    lines_level3[i] = [line[0], Token("="), line[0], Token("-")] + line[2:]
+                    lines_level2[i] = [line[0], Token("="), line[0], Token("-")] + line[2:]
                 elif line[1] == "*=":
-                    lines_level3[i] = [line[0], Token("="), line[0], Token("*")] + line[2:]
+                    lines_level2[i] = [line[0], Token("="), line[0], Token("*")] + line[2:]
                 elif line[1] == "/=":
-                    lines_level3[i] = [line[0], Token("="), line[0], Token("/")] + line[2:]
+                    lines_level2[i] = [line[0], Token("="), line[0], Token("/")] + line[2:]
                 elif line[1] == "%=":
-                    lines_level3[i] = [line[0], Token("="), line[0], Token("%")] + line[2:]
+                    lines_level2[i] = [line[0], Token("="), line[0], Token("%")] + line[2:]
                 elif line[1] == "//=":
-                    lines_level3[i] = [line[0], Token("="), line[0], Token("//")] + line[2:]
+                    lines_level2[i] = [line[0], Token("="), line[0], Token("//")] + line[2:]
         if (line[0] == "num" or line[0] == "str" or line[0] == "bool" or line[0] == "obj" or line[0] == "id") and len(line) == 2:
-            lines_level3[i] = [line[0], line[1], Token("="), Token("null")]
+            lines_level2[i] = [line[0], line[1], Token("="), Token("null")]
     #
     lines_level4 = []
-    for l in lines_level3:
+    for l in lines_level2:
         if l[0] == "else" and l[1] == "if":
             lines_level4.append([Token("else")])
             lines_level4.append(l[1:])
@@ -358,10 +342,10 @@ def compile(code):
             else:
                 line.append(tk)
         lines_level6.append(line)
-    for line in lines_level5:
-        print(line)
+    #for line in lines_level5:
+    #    print(line)
     print()
-    return(lines_level6)
+    return(lines_level2)
 
 res = compile(text)
 for st in res:
