@@ -192,13 +192,25 @@ def compile(code):
             ops = []
             line = []
             start = 0
+            bra_count = 0
             for token in l:
-                if start and token != ";":
+                if token == ")":
+                    bra_count -= 1
+                if start and token != ";" and bra_count != 0:
                     line.append(token)
                 if token == "(":
+                    bra_count += 1
                     start = 1
-                if token == ";":
-
+                if token == ";" or (token == ")" and bra_count == 0):
+                    ops.append(line)
+                    line = []
+            #
+            lines_level2[i] = [Token("while"), Token("("), *ops[1], Token(")"), Token("{")]
+            lines_level2.insert(i, ops[0])
+            #
+            for j in range():
+                pass
+            #
             i += 1
         i += 1
     return(lines_level2)
