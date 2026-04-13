@@ -208,8 +208,13 @@ def compile(code):
             lines_level2[i] = [Token("while"), Token("("), *ops[1], Token(")"), Token("{")]
             lines_level2.insert(i, ops[0])
             #
-            for j in range():
-                pass
+            bra_count = 0
+            for j in range(i, len(lines_level2)):
+                l2 = lines_level2[j]
+                if "{" in l2:
+                    bra_count += 1
+                if "}" in l2:
+                    bra_count -= 1
             #
             i += 1
         i += 1
