@@ -2,34 +2,31 @@ import copy
 
 text = """
 num a = 0;
-
-if (a == 0){
-  a = 1;//comment
-}
-for (num i = 0; i < 10; i++){
-a = 1 *2;
-}
-while(1){
-num i = 2;
-for (num h = 0;  h< 8; h++){
-      i *=h;
-    }
-
-}
-str f = "{aaa;;;}";
-num c = 10;
-num i = 0;
-while (i < c){
-print(i);
-}
-if (a+2*(3-  i) > 0){
-print(1);
-}else if (a<10){
+str b = "aaavfm{ddd2}";
+bool c = true;
+a += 1;
+ a++;
+  a--;
+ a -= 3;
+ 
+//comment
+if (a == 1){
+ print(1);
+}else if(a == 0){
 print(2);
-}else{
-print(3);
 }
-num c;
+a = 2;
+num b = 6;
+num c = (b + 3) * 10;
+num d = (a * 2) % 3 + a * b * (b + c) - (c - (b ** 2));
+for (num i = 0; i < 10; i++){
+    if(i %2 == 0){
+        print(i * 2);
+    }
+}
+while (1){
+print(5);
+}
 """
 
 words = ["if", "else", "while", "num", "str", "bool", "obj", "id", "break", "continue", "null", "print"]
@@ -215,10 +212,12 @@ def compile(code):
                     bra_count += 1
                 if "}" in l2:
                     bra_count -= 1
+                    if bra_count == 0:
+                        lines_level2.insert(j, ops[2])
+                        break
             #
             i += 1
         i += 1
-    return(lines_level2)
     #
     #четвертый уровень
     #небольшие преобразования команд
@@ -264,17 +263,18 @@ def compile(code):
         bra_count = 0
         set_command_param = 0
         p = 0
+        st = 0
         for i in range(len(l)):
             token = l[i]
             if token == "}" or token == "{" or token.type == "command":
                 line.append(token)
             #
-            if token == ")":
+            if token == ")" and not set_command_param:
                 bra_count -= 1
                 if bra_count == 0:
                     line.append(params)
                     params = []
-            if bra_count > 0:
+            if bra_count > 0 and not set_command_param:
                 params.append(token)
             if token == "(":
                 bra_count += 1
@@ -293,12 +293,18 @@ def compile(code):
             if token.type == "type":
                 line.append("set")
                 line.append(token)
-                p = 1
-            if token.type == "variable" and p:
+                st = 1
+            if token.type == "variable" and st:
                 line.append(token)
                 set_command_param = 1
-                p = 0
+                st = 0
         lines_level5.append(line)
+    for line in lines_level4:
+        print(line)
+    print()
+    for line in lines_level5:
+        print(line)
+    print()
     #
     #шестой уровень
     #преобразование математических выражений
@@ -320,8 +326,8 @@ def compile(code):
                         elif token == ")":
                             bra_count -= 1
                         elif token in operations:
-                            p = prios[token.text] + bra_count * 20
-                            oper_tokens.append([p, i])
+                            st = prios[token.text] + bra_count * 20
+                            oper_tokens.append([st, i])
                     #
                     ind = None#выбор оператора с максимальным приоритетом
                     max_prio = -1
@@ -330,6 +336,7 @@ def compile(code):
                             max_prio = op[0]
                             ind = op[1]
                     #
+                    print(ind, mathline)
                     if mathline[ind] in operations_1_param:
                         operation = mathline[ind:ind + 2]#срез выражения с токенами(если один параметр)
                         for i in range(2):
