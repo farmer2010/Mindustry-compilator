@@ -329,9 +329,6 @@ def compile(code):
             #
             ind += 1
         i += 1
-    for l in lines_level5:
-        print(l)
-    print()
     #
     #седьмой уровень
     #добавление скобок в else
@@ -352,11 +349,35 @@ def compile(code):
                     break
                 j += 1
             lines_level5[i].append(Token("{"))
-        #
         i += 1
-    return(lines_level5)
+    for l in lines_level5:
+        print(l)
+    print()
     #
     #восьмой уровень
+    #преобразование if
+    #
+    i = 0
+    while i < len(lines_level5):#8.1 - разделение if на if и if-else
+        if lines_level5[i][0] == "if":
+            j = i
+            bra_count = 0
+            while 1:
+                if lines_level5[j][-1] == "{":
+                    bra_count += 1
+                if lines_level5[j][0] == "}":
+                    bra_count -= 1
+                if bra_count == 0:
+                    break
+                #
+                j += 1
+            #
+            if j + 1 < len(lines_level5) and lines_level5[j + 1][0] == "else":
+                lines_level5[i][0] = Token("if-else")
+        i += 1
+    #return(lines_level5)
+    #
+    #девятый уровень
     #преобразование математических выражений
     #
     lines_level9 = []
