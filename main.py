@@ -30,6 +30,18 @@ print(5);
 a = ((1 + 2) * 3) % 7;
 """
 
+text = '''
+if (1 == 2){
+print(1);
+}else if (1==1){
+print(2);
+}else if (1 == 3){
+print(3);
+}else{
+print(4);
+}
+'''
+
 words = ["if", "else", "while", "num", "str", "bool", "obj", "id", "break", "continue", "null", "print"]
 symb = ["{", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "%=", "//=", "+", "-", "*", "**", "/", "%", "%%", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "===", "<<", ">>", ">>>", "!", "&&", "||", "&", "~", "^", ";"]
 operations = ["+", "-", "*", "/", "//", "%", "%%", "**", ">", "<", ">=", "<=", "==", "===", "!=", "!", "&&", "||", "^", "&", "~", "<<", ">>", ">>>"]
@@ -344,7 +356,7 @@ def compile(code):
                 if lines_level5[j][0] == "}":
                     bra_count -= 1
                 #
-                if bra_count == 0:
+                if bra_count == 0 and lines_level5[j + 1][0] != "else":
                     lines_level5.insert(j + 1, [Token("}")])
                     break
                 j += 1
@@ -361,22 +373,42 @@ def compile(code):
     ind = 0
     while i < len(lines_level5):
         if lines_level5[i][0] == "if":
-            j = i
+            endif_pos = i
             bra_count = 0
-            while j < len(lines_level5):
-                if lines_level5[j][-1] == "{":
+            while endif_pos < len(lines_level5):#определение позиции конца if
+                if lines_level5[endif_pos][-1] == "{":
                     bra_count += 1
-                if lines_level5[j][0] == "}":
+                if lines_level5[endif_pos][0] == "}":
                     bra_count -= 1
                 if bra_count == 0:
                     break
                 #
-                j += 1
+                endif_pos += 1
             #
-            if j + 1 < len(lines_level5) and lines_level5[j + 1][0] == "else":#if-else
-                pass
+            if endif_pos + 1 < len(lines_level5) and lines_level5[endif_pos + 1][0] == "else":#if-else
+                endelse_pos = endif_pos + 1
+                bra_count = 0
+                while endelse_pos < len(lines_level5):#определение позиции конца else
+                    if lines_level5[endelse_pos][-1] == "{":
+                        bra_count += 1
+                    if lines_level5[endelse_pos][0] == "}":
+                        bra_count -= 1
+                    if bra_count == 0:
+                        break
+                    #
+                    endelse_pos += 1
+                #
+                lines_level5[endelse_pos] = [Token("label"), Token("if_label" + str(ind))]
+                #
+                lines_level5[endif_pos] = [Token("goto"), Token("if_label" + str(ind)), Token(""), Token("always")]
+                ind += 1
+                lines_level5[endif_pos + 1] = [Token("label"), Token("if_label" + str(ind))]
+                #
+                lines_level5.insert(i, [Token("set"), Token("bool"), Token("__if_condition__"), copy.deepcopy(lines_level5[i][1])])
+                lines_level5[i + 1] = [Token("goto"), Token("if_label" + str(ind)), Token("__if_condition__"), Token("false")]
+                ind += 1
             else:#if
-                lines_level5[j] = [Token("label"), Token("if_label" + str(ind))]
+                lines_level5[endif_pos] = [Token("label"), Token("if_label" + str(ind))]
                 lines_level5.insert(i, [Token("set"), Token("bool"), Token("__if_condition__"), copy.deepcopy(lines_level5[i][1])])
                 lines_level5[i + 1] = [Token("goto"), Token("if_label" + str(ind)), Token("__if_condition__"), Token("false")]
                 ind += 1
