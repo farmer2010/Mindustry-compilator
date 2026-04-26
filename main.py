@@ -313,7 +313,7 @@ def compile(code):
             #
             j = i
             bra_count = 0
-            while 1:
+            while j < len(lines_level5):
                 if lines_level5[j][-1] == "{":
                     bra_count += 1
                 if lines_level5[j][0] == "}":
@@ -338,7 +338,7 @@ def compile(code):
         if lines_level5[i][0] == "else" and len(lines_level5[i]) == 1:
             j = i + 1
             bra_count = 0
-            while 1:
+            while j < len(lines_level5):
                 if lines_level5[j][-1] == "{":
                     bra_count += 1
                 if lines_level5[j][0] == "}":
@@ -358,11 +358,12 @@ def compile(code):
     #преобразование if
     #
     i = 0
-    while i < len(lines_level5):#8.1 - разделение if на if и if-else
+    ind = 0
+    while i < len(lines_level5):
         if lines_level5[i][0] == "if":
             j = i
             bra_count = 0
-            while 1:
+            while j < len(lines_level5):
                 if lines_level5[j][-1] == "{":
                     bra_count += 1
                 if lines_level5[j][0] == "}":
@@ -372,10 +373,15 @@ def compile(code):
                 #
                 j += 1
             #
-            if j + 1 < len(lines_level5) and lines_level5[j + 1][0] == "else":
-                lines_level5[i][0] = Token("if-else")
+            if j + 1 < len(lines_level5) and lines_level5[j + 1][0] == "else":#if-else
+                pass
+            else:#if
+                lines_level5[j] = [Token("label"), Token("if_label" + str(ind))]
+                lines_level5.insert(i, [Token("set"), Token("bool"), Token("__if_condition__"), copy.deepcopy(lines_level5[i][1])])
+                lines_level5[i + 1] = [Token("goto"), Token("if_label" + str(ind)), Token("__if_condition__"), Token("false")]
+                ind += 1
         i += 1
-    #return(lines_level5)
+    return(lines_level5)
     #
     #девятый уровень
     #преобразование математических выражений
