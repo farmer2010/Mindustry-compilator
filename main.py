@@ -44,6 +44,14 @@ if (1 == 2){
 }else{
     print(3);
 }
+
+if (1 == 2){
+    print(1);
+}else if (1==1){
+    print(2);
+}else{
+    print(3);
+}
 '''
 
 words = ["if", "else", "while", "num", "str", "bool", "obj", "id", "break", "continue", "null", "print"]
@@ -103,7 +111,7 @@ class Token():
 #+   4 уровень - небольшие преобразования команд + разделение конструкций else - if
 #+   5 уровень - преобразование токенов в команды
 #+   6 уровень - разделение цикла while
-#-   7 уровень - добавление скобок в else
+#+   7 уровень - добавление скобок в else
 #+   8 уровень - преобразование if
 #+   9 уровень - преобразование математических выражений
 #-   10 уровень - замена set на op
@@ -347,16 +355,23 @@ def compile(code):
             #
             ind += 1
         i += 1
-    for l in lines_level5:
-        print(l)
-    print()
     #
     #седьмой уровень
     #добавление скобок в else
     #
     i = 0
     while i < len(lines_level5):
-        if lines_level5[i][0] == "if":
+        act = 0
+        if i > 0:
+            if lines_level5[i - 1][0] != "else":
+                act = 1
+            else:#if else
+                if len(lines_level5[i - 1]) == 2:
+                    act = 1
+        else:
+            act = 1
+        #
+        if lines_level5[i][0] == "if" and act:
             j = i
             elseif_count = 0
             bra_count = 0
@@ -370,13 +385,10 @@ def compile(code):
                 if lines_level5[j][0] == "else" and len(lines_level5[j]) == 1 and bra_count == 0:
                     elseif_count += 1
                     lines_level5[j].append(Token("{"))
-                #
-                if lines_level5[j][0] == "else" and len(lines_level5[j]) == 2 and bra_count == 0:
+                elif lines_level5[j][0] == "else" and len(lines_level5[j]) == 2 and bra_count == 1:
                     end_flag = 1
                 #
-                #print(lines_level5[j][0], end_flag, bra_count)
                 if lines_level5[j][0] == "}" and end_flag and bra_count == 0:
-                    print("break", j)
                     break
                 #
                 j += 1
@@ -384,7 +396,6 @@ def compile(code):
             for k in range(elseif_count):
                 lines_level5.insert(j, [Token("}")])
         i += 1
-    return(lines_level5)
     for l in lines_level5:
         print(l)
     print()
