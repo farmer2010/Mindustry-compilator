@@ -32,13 +32,17 @@ a = ((1 + 2) * 3) % 7;
 
 text = '''
 if (1 == 2){
-print(1);
+    if (1 == 2){
+        print(11);
+    }else if (1==1){
+        print(12);
+    }else{
+        print(13);
+    }
 }else if (1==1){
-print(2);
-}else if (1 == 3){
-print(3);
+    print(2);
 }else{
-print(4);
+    print(3);
 }
 '''
 
@@ -100,8 +104,10 @@ class Token():
 #+   5 уровень - преобразование токенов в команды
 #+   6 уровень - разделение цикла while
 #-   7 уровень - добавление скобок в else
-#-   8 уровень - преобразование if
+#+   8 уровень - преобразование if
 #+   9 уровень - преобразование математических выражений
+#-   10 уровень - замена set на op
+#-   11 уровень - финальное преобразование команд в mlog
 
 def compile(code):
     #
@@ -341,27 +347,44 @@ def compile(code):
             #
             ind += 1
         i += 1
+    for l in lines_level5:
+        print(l)
+    print()
     #
     #седьмой уровень
     #добавление скобок в else
     #
     i = 0
     while i < len(lines_level5):
-        if lines_level5[i][0] == "else" and len(lines_level5[i]) == 1:
-            j = i + 1
+        if lines_level5[i][0] == "if":
+            j = i
+            elseif_count = 0
             bra_count = 0
+            end_flag = 0
             while j < len(lines_level5):
                 if lines_level5[j][-1] == "{":
                     bra_count += 1
                 if lines_level5[j][0] == "}":
                     bra_count -= 1
                 #
-                if bra_count == 0 and lines_level5[j + 1][0] != "else":
-                    lines_level5.insert(j + 1, [Token("}")])
+                if lines_level5[j][0] == "else" and len(lines_level5[j]) == 1 and bra_count == 0:
+                    elseif_count += 1
+                    lines_level5[j].append(Token("{"))
+                #
+                if lines_level5[j][0] == "else" and len(lines_level5[j]) == 2 and bra_count == 0:
+                    end_flag = 1
+                #
+                #print(lines_level5[j][0], end_flag, bra_count)
+                if lines_level5[j][0] == "}" and end_flag and bra_count == 0:
+                    print("break", j)
                     break
+                #
                 j += 1
-            lines_level5[i].append(Token("{"))
+            #
+            for k in range(elseif_count):
+                lines_level5.insert(j, [Token("}")])
         i += 1
+    return(lines_level5)
     for l in lines_level5:
         print(l)
     print()
