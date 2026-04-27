@@ -28,9 +28,7 @@ while (true){
 print(5);
 }
 a = ((1 + 2) * 3) % 7;
-"""
-
-text = '''
+//
 if (1 == 2){
     if (1 == 2){
         print(11);
@@ -44,21 +42,38 @@ if (1 == 2){
 }else{
     print(3);
 }
-
-if (1 == 2){
-    print(1);
-}else if (1==1){
-    print(2);
-}else{
-    print(3);
-}
-'''
+"""
 
 words = ["if", "else", "while", "num", "str", "bool", "obj", "id", "break", "continue", "null", "print"]
-symb = ["{", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "%=", "//=", "+", "-", "*", "**", "/", "%", "%%", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "===", "<<", ">>", ">>>", "!", "&&", "||", "&", "~", "^", ";"]
-operations = ["+", "-", "*", "/", "//", "%", "%%", "**", ">", "<", ">=", "<=", "==", "===", "!=", "!", "&&", "||", "^", "&", "~", "<<", ">>", ">>>"]
-operations_1_param = ["!", "~"]
+symb = ["{", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "%=", "~/=", "+", "-", "*", "**", "/", "~/", "%", "%%", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "===", "<<", ">>", ">>>", "!", "&&", "||", "&", "^", ";"]
+operations = ["+", "-", "*", "/", "~/", "%", "%%", "**", ">", "<", ">=", "<=", "==", "===", "!=", "!", "&&", "||", "^", "&", "<<", ">>", ">>>"]
+operations_1_param = ["!"]
 spaces = [" ", "\t", "\n"]
+op_to_mlog = {
+    "+" : "add",
+    "-" : "sub",
+    "*": "mul",
+    "/": "div",
+    "~/": "idiv",
+    "%": "mod",
+    "%%": "emod",
+    "**": "pow",
+    "==": "equal",
+    "!=": "notEqual",
+    "&&": "land",#булевое
+    "<": "lessThan",
+    "<=": "lessThanEq",
+    ">": "greaterThan",
+    ">=": "greaterThanEq",
+    "===": "strictEqual",
+    "<<": "shl",
+    ">>": "shr",
+    ">>>": "ushr",
+    "||": "or",
+    "&": "and",#побитовое
+    "^": "xor",
+    "!": "not"#побитовое
+}
 
 commands = ["if", "else", "while", "for", "break", "continue", "print"]
 types = ["num", "str", "bool", "obj", "id"]
@@ -396,9 +411,6 @@ def compile(code):
             for k in range(elseif_count):
                 lines_level5.insert(j, [Token("}")])
         i += 1
-    for l in lines_level5:
-        print(l)
-    print()
     #
     #восьмой уровень
     #преобразование if
@@ -447,7 +459,6 @@ def compile(code):
                 lines_level5[i + 1] = [Token("goto"), Token("if_label" + str(ind)), Token("__if_condition__"), Token("false")]
                 ind += 1
         i += 1
-    return(lines_level5)
     #
     #девятый уровень
     #преобразование математических выражений
@@ -513,6 +524,17 @@ def compile(code):
             else:
                 line.append(tk)
         lines_level9.append(line)
+    for l in lines_level9:
+        print(l)
+    print()
+    #
+    #десятый уровень
+    #замена set на op
+    #
+    for i in range(len(lines_level9)):
+        l = lines_level9[i]
+        if l[0] == "set" and len(l[3]) > 1:
+            lines_level9[i] = [Token("op"), l[2], Token(op_to_mlog[l[3][1].text]), l[3][0], l[3][2]]
     return(lines_level9)
 
 res = compile(text)
