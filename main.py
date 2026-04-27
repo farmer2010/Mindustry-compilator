@@ -524,9 +524,6 @@ def compile(code):
             else:
                 line.append(tk)
         lines_level9.append(line)
-    for l in lines_level9:
-        print(l)
-    print()
     #
     #десятый уровень
     #замена set на op
@@ -535,7 +532,30 @@ def compile(code):
         l = lines_level9[i]
         if l[0] == "set" and len(l[3]) > 1:
             lines_level9[i] = [Token("op"), l[2], Token(op_to_mlog[l[3][1].text]), l[3][0], l[3][2]]
-    return(lines_level9)
+    for l in lines_level9:
+        print(l)
+    print()
+    #
+    #одиннадцатый уровень
+    #финальное преобразование команд в mlog
+    #
+    lines_level11 = []
+    for l in lines_level9:
+        if l[0] == "set":
+            lines_level11.append(f"set {l[2]} {l[3][0]}")
+        elif l[0] == "op":
+            lines_level11.append(f"op {l[2]} {l[1]} {l[3]} {l[4]}")
+        elif l[0] == "goto":
+            if l[3] != "always":
+                lines_level11.append(f"jump {l[1]} equal {l[2]} {l[3]}")
+            else:
+                lines_level11.append(f"jump {l[1]} always x false")
+        elif l[0] == "label":
+            lines_level11.append(f"{l[1]}:")
+        elif l[0] == "print":
+            lines_level11.append(f"print {l[1][0]}")
+    lines_level11.append("end")
+    return(lines_level11)
 
 res = compile(text)
 for st in res:
