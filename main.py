@@ -1,50 +1,7 @@
 import copy
+import pyperclip
 
-text = """
-num a = 0;
-str b = "aaavfm{ddd2}";
-bool c = true;
-a += 1;
- a++;
-  a--;
- a -= 3;
- 
-//comment
-if (a == 1){
- print(1);
-}else if(a == 0){
-print(2);
-}
-a = 2;
-num b = 6;
-num c = (b + 3) * 10;
-num d = (a * 2) % 3 + a * b * (b + c) - (c - (b ** 2));
-for (num i = 0; i < 10; i++){
-    if(i %2 == 0){
-        print(i * 2);
-    }
-}
-while (true){
-print(5);
-}
-a = ((1 + 2) * 3) % 7;
-//
-if (1 == 2){
-    if (1 == 2){
-        print(11);
-    }else if (1==1){
-        print(12);
-    }else{
-        print(13);
-    }
-}else if (1==1){
-    print(2);
-}else{
-    print(3);
-}
-"""
-
-words = ["if", "else", "while", "num", "str", "bool", "obj", "id", "break", "continue", "null", "print"]
+words = ["if", "else", "while", "num", "str", "bool", "obj", "id", "break", "continue", "null", "print", "printflush"]
 symb = ["{", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "%=", "~/=", "+", "-", "*", "**", "/", "~/", "%", "%%", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "===", "<<", ">>", ">>>", "!", "&&", "||", "&", "^", ";"]
 operations = ["+", "-", "*", "/", "~/", "%", "%%", "**", ">", "<", ">=", "<=", "==", "===", "!=", "!", "&&", "||", "^", "&", "<<", ">>", ">>>"]
 operations_1_param = ["!"]
@@ -75,7 +32,7 @@ op_to_mlog = {
     "!": "not"#побитовое
 }
 
-commands = ["if", "else", "while", "for", "break", "continue", "print"]
+commands = ["if", "else", "while", "for", "break", "continue", "print", "printflush"]
 types = ["num", "str", "bool", "obj", "id"]
 
 prios = {
@@ -532,9 +489,6 @@ def compile(code):
         l = lines_level9[i]
         if l[0] == "set" and len(l[3]) > 1:
             lines_level9[i] = [Token("op"), l[2], Token(op_to_mlog[l[3][1].text]), l[3][0], l[3][2]]
-    for l in lines_level9:
-        print(l)
-    print()
     #
     #одиннадцатый уровень
     #финальное преобразование команд в mlog
@@ -554,9 +508,70 @@ def compile(code):
             lines_level11.append(f"{l[1]}:")
         elif l[0] == "print":
             lines_level11.append(f"print {l[1][0]}")
+        elif l[0] == "printflush":
+            lines_level11.append(f"printflush {l[1][0]}")
     lines_level11.append("end")
     return(lines_level11)
+
+
+text = """
+num a = 0;
+str b = "aaavfm{ddd2}";
+bool c = true;
+a += 1;
+ a++;
+  a--;
+ a -= 3;
+
+//comment
+if (a == 1){
+ print(1);
+}else if(a == 0){
+print(2);
+}
+a = 2;
+num b = 6;
+num c = (b + 3) * 10;
+num d = (a * 2) % 3 + a * b * (b + c) - (c - (b ** 2));
+for (num i = 0; i < 10; i++){
+    if(i %2 == 0){
+        print(i * 2);
+    }
+}
+while (true){
+print(5);
+}
+a = ((1 + 2) * 3) % 7;
+//
+if (1 == 2){
+    if (1 == 2){
+        print(11);
+    }else if (1==1){
+        print(12);
+    }else{
+        print(13);
+    }
+}else if (1==1){
+    print(2);
+}else{
+    print(3);
+}
+"""
+
+text = """
+while(1){
+    for (num i = 0; i < 25; i++){
+        print(i);
+        printflush(message1);
+    }
+}
+"""
 
 res = compile(text)
 for st in res:
     print(st)
+#
+txt = ""
+for st in res:
+    txt += st + "\n"
+pyperclip.copy(txt)
