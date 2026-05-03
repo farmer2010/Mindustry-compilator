@@ -1,11 +1,12 @@
 import copy
 import pyperclip
 
-words = ["if", "else", "while", "num", "str", "bool", "obj", "id", "break", "continue", "null", "print", "printflush"]
+words = ["if", "else", "while", "num", "str", "bool", "obj", "id", "break", "continue", "null", "print", "printflush", "stop", "end"]
 symb = ["{", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "%=", "~/=", "+", "-", "*", "**", "/", "~/", "%", "%%", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "===", "<<", ">>", ">>>", "!", "&&", "||", "&", "^", ";"]
 operations = ["+", "-", "*", "/", "~/", "%", "%%", "**", ">", "<", ">=", "<=", "==", "===", "!=", "!", "&&", "||", "^", "&", "<<", ">>", ">>>"]
 operations_1_param = ["!"]
 spaces = [" ", "\t", "\n"]
+numbers = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 op_to_mlog = {
     "+" : "add",
     "-" : "sub",
@@ -32,7 +33,7 @@ op_to_mlog = {
     "!": "not"#побитовое
 }
 
-commands = ["if", "else", "while", "for", "break", "continue", "print", "printflush"]
+commands = ["if", "else", "while", "for", "break", "continue", "print", "printflush", "stop", "end"]
 types = ["num", "str", "bool", "obj", "id"]
 
 prios = {
@@ -44,15 +45,20 @@ prios = {
     "<" : 5, ">" : 5, "<=" : 5, ">=" : 5,
     "<<" : 6, ">>" : 6, ">>>" : 6,
     "+" : 7, "-" : 7,
-    "*" : 8, "/" : 8, "//" : 8,
+    "*" : 8, "/" : 8, "~/" : 8,
     "%" : 9, "%%" : 9,
     "**" : 10,
-    "!" : 11, "~" : 11,
+    "!" : 11
 }
 
 class Token():
     def __init__(self, text):
         self.type = None
+        number = 1
+        try:
+            float(text)
+        except:
+            number = 0
         if text in words:
             if text in commands:
                 self.type = "command"
@@ -64,6 +70,8 @@ class Token():
             self.type = "string"
         elif text in symb:
             self.type = "special symbol"
+        elif number:
+            self.type = "number"
         else:
             self.type = "variable"
         self.text = text
@@ -86,16 +94,33 @@ class Token():
 #+   7 уровень - добавление скобок в else
 #+   8 уровень - преобразование if
 #+   9 уровень - преобразование математических выражений
-#-   10 уровень - замена set на op
-#-   11 уровень - финальное преобразование команд в mlog
+#+   10 уровень - замена set на op
+#+   11 уровень - финальное преобразование команд в mlog
+
+'''
+Коды ошибок:
+1x - неверное количество скобок
+2x - неизвестная команда
+3x - неправильнны формат числа
+4x - 
+
+10 - неверное количество фигурных скобок
+11 - неверное количество круглых скобок
+12 - неверное количество квадратных скобок
+
+20 - неизвестная команда
+
+30 - неправильнны формат числа
+'''
 
 def compile(code):
+    console = ""
     #
     #первый уровень
     #
     lines_level1 = []
     line = ""
-    string = 0
+    string = None
     start = 1
     comment = 0
     last_symbol = ""
@@ -105,8 +130,11 @@ def compile(code):
             if symbol != " " and symbol != "\t" and symbol != "\n":
                 start = 0
             if symbol == "'" or symbol == '"':
-                string = not string
-            if not string and not for_cycle:
+                if string == None:
+                    string = symbol
+                elif string == symbol:
+                    string = None
+            if string == None and not for_cycle:
                 if symbol == ";":
                     lines_level1.append(line)
                     line = ""
@@ -120,13 +148,13 @@ def compile(code):
                 lines_level1.append(line + "{")
                 line = ""
                 start = 1
-            if symbol == "}" and not string:
+            if symbol == "}" and string == None:
                 lines_level1.append(line + "}")
                 line = ""
                 start = 1
-            if (((symbol != ";" or for_cycle) and symbol != "}") or string) and not start:
+            if (((symbol != ";" or for_cycle) and symbol != "}") or string != None) and not start:
                 line += symbol
-            if symbol == "/" and last_symbol == "/" and not string:
+            if symbol == "/" and last_symbol == "/" and string == None:
                 comment = 1
             if line == "for":
                 for_cycle = 1
@@ -136,14 +164,14 @@ def compile(code):
             start = 1
         last_symbol = symbol
     #
-    #втррой уровень
+    #второй уровень
     #токенайзер
     #
     lines_level2 = []
     for l in lines_level1:
         line = ""
         cmd = []
-        txt = 0
+        txt = None
         token_type = None
         for i in range(len(l)):
             symbol = l[i]
@@ -153,31 +181,81 @@ def compile(code):
                 next_symbol = ""
             #
             if symbol == "'" or symbol == '"':
-                txt = not txt
+                if txt == None:
+                    txt = symbol
+                elif txt == symbol:
+                    txt = None
             #
             if token_type == None:
                 if symbol == "'" or symbol == '"':
                     token_type = "string"
                 elif symbol in symb and (symbol != "'" or symbol != '"'):
-                    token_type = "special symbol"
+                    if symbol == "-" and next_symbol in numbers:
+                        token_type = "number"
+                    else:
+                        token_type = "special symbol"
                 elif not symbol in spaces:
                     token_type = "word"
+                elif symbol in numbers:
+                    token_type = "number"
+            #
             if token_type == "string" or (not symbol in spaces and (
                     (token_type == "word" and not symbol in symb) or
-                    (token_type == "special symbol" and symbol in symb)
+                    (token_type == "special symbol" and symbol in symb) or
+                    (token_type == "number")
             )):
                 line += symbol
             #
             if (token_type == "word" and (next_symbol in spaces or next_symbol in symb)) or \
                     (token_type == "special symbol" and not line + next_symbol in symb) or \
-                    (token_type == "string" and (symbol == "'" or symbol == '"') and not txt) or \
+                    (token_type == "string" and (symbol == "'" or symbol == '"') and txt == None) or \
+                    (token_type == "number" and (next_symbol in spaces or next_symbol in symb)) or \
                     i == len(l) - 1:
                 if line != "":
+                    print(token_type)
+                    if token_type == "number":
+                        try:
+                            float(line)
+                        except:
+                            console += "Error 30"
+                            return([], console)
                     cmd.append(Token(line))
                     token_type = None
                     line = ""
-
         lines_level2.append(cmd)
+    #
+    #уровень 2.5
+    #проверка синтаксиса
+    #
+    fig_bra_count = 0
+    for l in lines_level2:
+        circ_bra_count = 0
+        for j in range(len(l)):
+            token = l[j]
+            if j < len(l) - 1:
+                next_token = l[j + 1]
+            else:
+                next_token = ""
+            #
+            if token == "{":
+                fig_bra_count += 1
+            elif token == "}":
+                fig_bra_count -= 1
+            #
+            if token == "(":
+                circ_bra_count += 1
+            elif token == ")":
+                circ_bra_count -= 1
+            #
+            if token.type == "variable" and next_token != "=" and j == 0:
+                console += "Errorr 20"
+                return([], console)
+        if circ_bra_count != 0:
+            console += "Error 11"
+            return([], console)
+    if fig_bra_count != 0:
+        console += "Error 10"
+        return([], console)
     #
     #третий уровень
     #разделение цикла for
@@ -424,13 +502,15 @@ def compile(code):
     for l in lines_level5:
         line = []
         command = l[0]
-        count = 3
-        if command == "if" or command == "while":
-            count = 1
+        count = 1
+        if command == "set":
+            count = 3
         for tk in l:
             if type(tk) == type(list()):
                 mathline = copy.deepcopy(tk)
                 var_ind = 0
+                if command == "set" and mathline[0] == "-" and len(mathline) == 2:
+                    mathline = [mathline[1], Token("*"), Token("-1")]
                 while len(mathline) > count:
                     oper_tokens = []#нахождение всех операторов
                     bra_count = 0
@@ -440,6 +520,13 @@ def compile(code):
                             bra_count += 1
                         elif token == ")":
                             bra_count -= 1
+                        elif token == "-":
+                            if i == 0 or mathline[i - 1] in operations:#унарный минус
+                                st = 11 + bra_count * 20
+                                oper_tokens.append([st, i])
+                            else:#обычный минус
+                                st = prios[token.text] + bra_count * 20
+                                oper_tokens.append([st, i])
                         elif token in operations:
                             st = prios[token.text] + bra_count * 20
                             oper_tokens.append([st, i])
@@ -455,9 +542,14 @@ def compile(code):
                         operation = mathline[ind:ind + 2]#срез выражения с токенами(если один параметр)
                         for i in range(2):
                             mathline.pop(ind)
-                        mathline.insert(ind - 1, Token("__autogenerated" + str(var_ind) + "__"))
+                        mathline.insert(ind, Token("__autogenerated" + str(var_ind) + "__"))
+                    elif mathline[ind] == "-" and (ind == 0 or mathline[ind - 1] in operations):
+                        operation = [mathline[ind + 1], Token("*"), Token("-1")]#срез выражения с токенами(если один параметр)(для унарного минуса)
+                        for i in range(2):
+                            mathline.pop(ind)
+                        mathline.insert(ind, Token("__autogenerated" + str(var_ind) + "__"))
                     else:
-                        operation = mathline[ind-1:ind+2]#срез выражения с токенами
+                        operation = mathline[ind-1:ind + 2]#срез выражения с токенами
                         for i in range(3):
                             mathline.pop(ind - 1)
                         mathline.insert(ind - 1, Token("__autogenerated" + str(var_ind) + "__"))
@@ -487,8 +579,10 @@ def compile(code):
     #
     for i in range(len(lines_level9)):
         l = lines_level9[i]
-        if l[0] == "set" and len(l[3]) > 1:
-            lines_level9[i] = [Token("op"), l[2], Token(op_to_mlog[l[3][1].text]), l[3][0], l[3][2]]
+        if l[0] == "set" and len(l[3]) == 3:
+            lines_level9[i] = [Token("op"), l[2], Token(op_to_mlog[l[3][1].text]), l[3][0], l[3][2]]#'op' result operator op1 op2
+        elif l[0] == "set" and len(l[3]) == 2:
+            lines_level9[i] = [Token("op"), l[2], Token(op_to_mlog[l[3][0].text]), l[3][1], Token("x")]
     #
     #одиннадцатый уровень
     #финальное преобразование команд в mlog
@@ -510,68 +604,28 @@ def compile(code):
             lines_level11.append(f"print {l[1][0]}")
         elif l[0] == "printflush":
             lines_level11.append(f"printflush {l[1][0]}")
+        elif l[0] == "stop":
+            lines_level11.append(f"stop")
+        elif l[0] == "end":
+            lines_level11.append(f"end")
     lines_level11.append("end")
-    return(lines_level11)
+    #
+    console += "File succesfully compilated"
+    #
+    return(lines_level11, console)
 
 
 text = """
-num a = 0;
-str b = "aaavfm{ddd2}";
-bool c = true;
-a += 1;
- a++;
-  a--;
- a -= 3;
-
-//comment
-if (a == 1){
- print(1);
-}else if(a == 0){
-print(2);
-}
-a = 2;
-num b = 6;
-num c = (b + 3) * 10;
-num d = (a * 2) % 3 + a * b * (b + c) - (c - (b ** 2));
-for (num i = 0; i < 10; i++){
-    if(i %2 == 0){
-        print(i * 2);
-    }
-}
-while (true){
-print(5);
-}
-a = ((1 + 2) * 3) % 7;
-//
-if (1 == 2){
-    if (1 == 2){
-        print(11);
-    }else if (1==1){
-        print(12);
-    }else{
-        print(13);
-    }
-}else if (1==1){
-    print(2);
-}else{
-    print(3);
-}
-"""
-
-text = """
-while(1){
-    for (num i = 0; i < 25; i++){
-        print(i);
-        printflush(message1);
-    }
-}
+num a = 1..;
 """
 
 res = compile(text)
-for st in res:
+for st in res[0]:
     print(st)
+print()
+print(res[1])
 #
 txt = ""
-for st in res:
+for st in res[0]:
     txt += st + "\n"
 pyperclip.copy(txt)
