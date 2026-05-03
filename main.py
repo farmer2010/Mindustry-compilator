@@ -101,7 +101,7 @@ class Token():
 Коды ошибок:
 1x - неверное количество скобок
 2x - неизвестная команда
-3x - неправильнны формат числа
+3x - неправильный формат числа
 4x - 
 
 10 - неверное количество фигурных скобок
@@ -110,7 +110,7 @@ class Token():
 
 20 - неизвестная команда
 
-30 - неправильнны формат числа
+30 - неправильный формат числа
 '''
 
 def compile(code):
@@ -189,6 +189,8 @@ def compile(code):
             if token_type == None:
                 if symbol == "'" or symbol == '"':
                     token_type = "string"
+                elif symbol in numbers:
+                    token_type = "number"
                 elif symbol in symb and (symbol != "'" or symbol != '"'):
                     if symbol == "-" and next_symbol in numbers:
                         token_type = "number"
@@ -196,8 +198,6 @@ def compile(code):
                         token_type = "special symbol"
                 elif not symbol in spaces:
                     token_type = "word"
-                elif symbol in numbers:
-                    token_type = "number"
             #
             if token_type == "string" or (not symbol in spaces and (
                     (token_type == "word" and not symbol in symb) or
@@ -212,7 +212,6 @@ def compile(code):
                     (token_type == "number" and (next_symbol in spaces or next_symbol in symb)) or \
                     i == len(l) - 1:
                 if line != "":
-                    print(token_type)
                     if token_type == "number":
                         try:
                             float(line)
@@ -616,7 +615,7 @@ def compile(code):
 
 
 text = """
-num a = 1..;
+num a = 1.0;
 """
 
 res = compile(text)
