@@ -101,8 +101,8 @@ def get_error(err_code, line_ind, pos, line):
         res += "Invalid number format"
     return(res)
 
-#+   1 уровень - разделение кода на блоки, удаление комментариев и пробелов перед строками
-#+   2 уровень - токенайзер
+#+   1 уровень - токенайзер
+#+   2 уровень - разделение кода блоки
 #+   3 уровень - разделение цикла for
 #+   4 уровень - небольшие преобразования команд + разделение конструкций else - if
 #+   5 уровень - преобразование токенов в команды
@@ -139,155 +139,70 @@ def compile(code):
     console = ""
     #
     #первый уровень
+    #токенайзер
     #
     lines_level1 = []
     line = ""
-    string = 0
-    start = 1
+    txt = 0
+    token_type = None
     comment = 0
-    last_symbol = ""
-    for_cycle = 0
-    line_ind = 0
-    lines_indexes = []
-    for symbol in code:
-        if symbol == "\n":
-            line_ind += 1
-        if not comment:
-            if symbol != " " and symbol != "\t" and symbol != "\n":
-                start = 0
-            if symbol == "'" or symbol == '"':
-                string = not string
-            if string == 0 and not for_cycle:
-                if symbol == ";":
-                    lines_indexes.append(line_ind)
-                    lines_level1.append(line)
-                    line = ""
-                    start = 1
-                elif symbol == "{":
-                    lines_indexes.append(line_ind)
-                    lines_level1.append(line + "{")
-                    line = ""
-                    start = 1
-            if for_cycle and symbol == "{":
-                for_cycle = 0
-                lines_indexes.append(line_ind)
-                lines_level1.append(line + "{")
-                line = ""
-                start = 1
-            if symbol == "}" and string == 0:
-                lines_indexes.append(line_ind)
-                lines_level1.append(line + "}")
-                line = ""
-                start = 1
-            if (((symbol != ";" or for_cycle) and symbol != "}") or string) and not start:
-                line += symbol
-            if symbol == "/" and last_symbol == "/" and string == 0:
-                comment = 1
-            if line == "for":
-                for_cycle = 1
-        elif symbol == "\n":
+    for i in range(len(code)):
+        symbol = code[i]
+        next_symbol = code[i + 1] if i < len(code) - 1 else ""
+        #
+        if symbol == "'" or symbol == '"':
+            txt = not txt
+        #
+        if symbol == "/" and next_symbol == "/":
+            comment = 1
+        if comment and symbol == "\n":
             comment = 0
-            line = ""
-            start = 1
-        last_symbol = symbol
+        #
+        if token_type == None:
+            if symbol == "'" or symbol == '"':
+                token_type = "string"
+            elif symbol in numbers:
+                token_type = "number"
+            elif symbol in symb and (symbol != "'" or symbol != '"'):
+                if symbol == "-" and next_symbol in numbers:
+                    token_type = "number"
+                else:
+                    token_type = "special symbol"
+            elif not symbol in spaces:
+                token_type = "word"
+        #
+        if not comment and (token_type == "string" or (not symbol in spaces and (
+                (token_type == "word" and not symbol in symb) or
+                (token_type == "special symbol" and symbol in symb) or
+                (token_type == "number")
+        ))):
+            line += symbol
+        #
+        if      (token_type == "word" and (next_symbol in spaces or next_symbol in symb)) or \
+                (token_type == "special symbol" and not line + next_symbol in symb) or \
+                (token_type == "string" and (symbol == "'" or symbol == '"') and txt == 0) or \
+                (token_type == "number" and (next_symbol in spaces or next_symbol in symb)):
+            token_type = None
+            if line != "":
+                lines_level1.append(Token(line))
+                line = ""
     #
     #второй уровень
-    #токенайзер
+    #разделение кода на блоки
     #
     lines_level2 = []
-    for li in range(len(lines_level1)):
-        l = lines_level1[li]
-        line = ""
-        cmd = []
-        txt = 0
-        token_type = None
-        for i in range(len(l)):
-            symbol = l[i]
-            if i < len(l) - 1:
-                next_symbol = l[i+1]
-            else:
-                next_symbol = ""
-            #
-            if symbol == "'" or symbol == '"':
-                txt = not txt
-            #
-            if token_type == None:
-                if symbol == "'" or symbol == '"':
-                    token_type = "string"
-                elif symbol in numbers:
-                    token_type = "number"
-                elif symbol in symb and (symbol != "'" or symbol != '"'):
-                    if symbol == "-" and next_symbol in numbers:
-                        token_type = "number"
-                    else:
-                        token_type = "special symbol"
-                elif not symbol in spaces:
-                    token_type = "word"
-            #
-            if token_type == "string" or (not symbol in spaces and (
-                    (token_type == "word" and not symbol in symb) or
-                    (token_type == "special symbol" and symbol in symb) or
-                    (token_type == "number")
-            )):
-                line += symbol
-            #
-            if (token_type == "word" and (next_symbol in spaces or next_symbol in symb)) or \
-                    (token_type == "special symbol" and not line + next_symbol in symb) or \
-                    (token_type == "string" and (symbol == "'" or symbol == '"') and txt == 0) or \
-                    (token_type == "number" and (next_symbol in spaces or next_symbol in symb)) or \
-                    i == len(l) - 1:
-                if line != "":
-                    if token_type == "number":
-                        try:
-                            float(line)
-                        except:
-                            console += get_error(30, lines_indexes[li], 0, code.split("\n")[lines_indexes[li]])
-                            return([], console)
-                    elif token_type == "string":
-                        if line[0] != line[-1]:
-                            if line[0] == "'":
-                                console += get_error(50, lines_indexes[li], 0, code.split("\n")[lines_indexes[li]])
-                            elif line[0] == '"':
-                                console += get_error(51, lines_indexes[li], 0, code.split("\n")[lines_indexes[li]])
-                            return([], console)
-                    cmd.append(Token(line, lines_indexes[li]))
-                    token_type = None
-                    line = ""
-        lines_level2.append(cmd)
-    #
-    #уровень 2.5
-    #проверка синтаксиса
-    #
-    fig_bra_count = 0
-    for li in range(len(lines_level2)):
-        l = lines_level2[li]
-        circ_bra_count = 0
-        for j in range(len(l)):
-            token = l[j]
-            if j < len(l) - 1:
-                next_token = l[j + 1]
-            else:
-                next_token = ""
-            #
-            if token == "{":
-                fig_bra_count += 1
-            elif token == "}":
-                fig_bra_count -= 1
-            #
-            if token == "(":
-                circ_bra_count += 1
-            elif token == ")":
-                circ_bra_count -= 1
-            #
-            if token.type == "variable" and next_token != "=" and j == 0:
-                console += get_error(20, lines_indexes[li], 0, code.split("\n")[lines_indexes[li]])
-                return([], console)
-        if circ_bra_count != 0:
-            console += get_error(11, lines_indexes[li], 0, code.split("\n")[lines_indexes[li]])
-            return([], console)
-    if fig_bra_count != 0:
-        console += get_error(10, -1, 0, code.split("\n")[lines_indexes[li]])
-        return([], console)
+    cmd = []
+    for_cycle = 0
+    for token in lines_level1:
+        if token == "for":
+            for_cycle = 1
+        if for_cycle and token == "{":
+            for_cycle = 0
+        if token != ";" or for_cycle:
+            cmd.append(token)
+        if (token == ";" and not for_cycle) or token == "}" or token == "{":
+            lines_level2.append(cmd)
+            cmd = []
     #
     #третий уровень
     #разделение цикла for
@@ -619,28 +534,28 @@ def compile(code):
     #одиннадцатый уровень
     #финальное преобразование команд в mlog
     #
-    lines_level11 = []
+    lines_level11 = ""
     for l in lines_level9:
         if l[0] == "set":
-            lines_level11.append(f"set {l[2]} {l[3][0]}")
+            lines_level11 += f"set {l[2]} {l[3][0]}\n"
         elif l[0] == "op":
-            lines_level11.append(f"op {l[2]} {l[1]} {l[3]} {l[4]}")
+            lines_level11 += f"op {l[2]} {l[1]} {l[3]} {l[4]}\n"
         elif l[0] == "goto":
             if l[3] != "always":
-                lines_level11.append(f"jump {l[1]} equal {l[2]} {l[3]}")
+                lines_level11 += f"jump {l[1]} equal {l[2]} {l[3]}\n"
             else:
-                lines_level11.append(f"jump {l[1]} always x false")
+                lines_level11 += f"jump {l[1]} always x false\n"
         elif l[0] == "label":
-            lines_level11.append(f"{l[1]}:")
+            lines_level11 += f"{l[1]}:\n"
         elif l[0] == "print":
-            lines_level11.append(f"print {l[1][0]}")
+            lines_level11 += f"print {l[1][0]}\n"
         elif l[0] == "printflush":
-            lines_level11.append(f"printflush {l[1][0]}")
+            lines_level11 += f"printflush {l[1][0]}\n"
         elif l[0] == "stop":
-            lines_level11.append(f"stop")
+            lines_level11 += f"stop\n"
         elif l[0] == "end":
-            lines_level11.append(f"end")
-    lines_level11.append("end")
+            lines_level11 += f"end\n"
+    lines_level11 += "end"
     #
     console += "File succesfully compilated"
     #
@@ -651,18 +566,22 @@ text = """
 for (num i = 0; i < 10; i++){
 print(i + 2*2);
 }
+//this is comment
 stop();
 num a = 0;
 a = 22333 + 1;
+if (1){
+print(1);
+}else if (2){
+print(2);
+}else{
+print(3);
+}
 """
 
 res = compile(text)
-for st in res[0]:
-    print(st)
+print(res[0])
 print()
 print(res[1])
 #
-txt = ""
-for st in res[0]:
-    txt += st + "\n"
-pyperclip.copy(txt)
+pyperclip.copy(res[0])
