@@ -187,6 +187,14 @@ def compile(code):
                 lines_level1.append(Token(line))
                 line = ""
     #
+    #уровень 1.5
+    #проверка синтаксиса
+    #
+    for i in range(len(lines_level1)):
+        token = lines_level1[i]
+        if token.type == "type" or token.type == "command":
+            pass
+    #
     #второй уровень
     #разделение кода на блоки
     #
