@@ -143,7 +143,7 @@ def compile(code):
     #
     lines_level1 = []
     line = ""
-    txt = 0
+    txt = None
     token_type = None
     comment = 0
     for i in range(len(code)):
@@ -151,7 +151,10 @@ def compile(code):
         next_symbol = code[i + 1] if i < len(code) - 1 else ""
         #
         if symbol == "'" or symbol == '"':
-            txt = not txt
+            if txt == None:
+                txt = symbol
+            elif txt == symbol:
+                txt = None
         #
         if symbol == "/" and next_symbol == "/":
             comment = 1
@@ -180,8 +183,9 @@ def compile(code):
         #
         if      (token_type == "word" and (next_symbol in spaces or next_symbol in symb)) or \
                 (token_type == "special symbol" and not line + next_symbol in symb) or \
-                (token_type == "string" and (symbol == "'" or symbol == '"') and txt == 0) or \
-                (token_type == "number" and (next_symbol in spaces or next_symbol in symb)):
+                (token_type == "string" and (symbol == "'" or symbol == '"') and txt == None) or \
+                (token_type == "number" and (next_symbol in spaces or next_symbol in symb)) or \
+                i == len(code) - 1:
             token_type = None
             if line != "":
                 lines_level1.append(Token(line))
@@ -571,6 +575,7 @@ def compile(code):
 
 
 text = """
+a = "00';
 for (num i = 0; i < 10; i++){
 print(i + 2*2);
 }
