@@ -99,6 +99,8 @@ def get_error(err_code, line_ind, pos, line):
         res += 'Unknown command ""'
     elif err_code == 30:
         res += "Invalid number format"
+    elif err_code == 40:
+        res += "; expected"
     return(res)
 
 #+   1 уровень - токенайзер
@@ -146,9 +148,16 @@ def compile(code):
     txt = None
     token_type = None
     comment = 0
+    line_ind = 0
+    pos = 0
     for i in range(len(code)):
         symbol = code[i]
         next_symbol = code[i + 1] if i < len(code) - 1 else ""
+        #
+        pos += 1
+        if symbol == "\n":
+            line_ind += 1
+            pos = 0
         #
         if symbol == "'" or symbol == '"':
             if txt == None:
@@ -188,16 +197,37 @@ def compile(code):
                 i == len(code) - 1:
             token_type = None
             if line != "":
-                lines_level1.append(Token(line))
+                lines_level1.append(Token(line, line=line_ind, pos=pos))
                 line = ""
     #
     #уровень 1.5
     #проверка синтаксиса
     #
+    print(lines_level1)
     for i in range(len(lines_level1)):
         token = lines_level1[i]
-        if token.type == "type" or token.type == "command":
-            pass
+        if i < len(lines_level1) - 1 and token.type == "variable" and lines_level1[i + 1] == "=":
+            k = i + 2
+            bra_count = 0
+            while k < len(lines_level1) - 1:
+                tk = lines_level1[k]
+                if tk == "(":
+                    bra_count += 1
+                if tk == ")":
+                    bra_count -= 1
+                #
+                if k < len(lines_level1) - 1:
+                    next_tk = lines_level1[k + 1]
+                    if tk == ";":
+                        break
+                    if bra_count == 0 and next_tk != ";" and (
+                        ((tk.type == "number" or tk.type == "variable" or tk.type == "string") and (next_tk not in operations) and next_tk != ")") or
+                        (tk.type == "special symbol" and next_tk.type != "number" and next_tk.type != "variable" and next_tk != "!") or
+                        (tk == ")" and next_tk.type != "special symbol")
+                    ):
+                        console += get_error(40, tk.line, tk.pos, code.split("\n")[tk.line])
+                        return(console, "")
+                k += 1
     #
     #второй уровень
     #разделение кода на блоки
@@ -575,7 +605,7 @@ def compile(code):
 
 
 text = """
-a = "00';
+num a = (0 + 1);
 for (num i = 0; i < 10; i++){
 print(i + 2*2);
 }
