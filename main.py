@@ -150,6 +150,7 @@ def compile(code):
     comment = 0
     line_ind = 0
     pos = 0
+    curpos = 0
     for i in range(len(code)):
         symbol = code[i]
         next_symbol = code[i + 1] if i < len(code) - 1 else ""
@@ -171,6 +172,7 @@ def compile(code):
             comment = 0
         #
         if token_type == None:
+            curpos = pos - 1
             if symbol == "'" or symbol == '"':
                 token_type = "string"
             elif symbol in numbers:
@@ -197,7 +199,7 @@ def compile(code):
                 i == len(code) - 1:
             token_type = None
             if line != "":
-                lines_level1.append(Token(line, line=line_ind, pos=pos))
+                lines_level1.append(Token(line, line=line_ind, pos=curpos))
                 line = ""
     #
     #уровень 1.5
@@ -222,12 +224,13 @@ def compile(code):
                         break
                     if bra_count == 0 and next_tk != ";" and (
                         ((tk.type == "number" or tk.type == "variable" or tk.type == "string") and (next_tk not in operations) and next_tk != ")") or
-                        (tk.type == "special symbol" and next_tk.type != "number" and next_tk.type != "variable" and next_tk != "!") or
+                        (tk.type in operations and next_tk.type != "number" and next_tk.type != "variable" and next_tk != "!") or
                         (tk == ")" and next_tk.type != "special symbol")
                     ):
-                        console += get_error(40, tk.line, tk.pos, code.split("\n")[tk.line])
+                        console += get_error(40, tk.line, tk.pos + len(tk.text), code.split("\n")[tk.line])
                         return(console, "")
                 k += 1
+
     #
     #второй уровень
     #разделение кода на блоки
@@ -605,7 +608,7 @@ def compile(code):
 
 
 text = """
-num a = (0 + 1);
+num a = (1 + !2222222) + 1 + (1 * 2);
 for (num i = 0; i < 10; i++){
 print(i + 2*2);
 }
