@@ -230,7 +230,23 @@ def compile(code):
                         console += get_error(40, tk.line, tk.pos + len(tk.text), code.split("\n")[tk.line])
                         return(console, "")
                 k += 1
-
+        if token.type == "command" and token != "if" and token != "else" and token != "for" and token != "while":
+            k = i + 1
+            bra_count = 0
+            while k < len(lines_level1) - 1:
+                tk = lines_level1[k]
+                if tk == "(":
+                    bra_count += 1
+                if tk == ")":
+                    bra_count -= 1
+                #
+                if tk == ")" and bra_count == 0 and lines_level1[k + 1] != ";":
+                    console += get_error(40, tk.line, tk.pos + len(tk.text), code.split("\n")[tk.line])
+                    return (console, "")
+                if tk == ";":
+                    break
+                #
+                k += 1
     #
     #второй уровень
     #разделение кода на блоки
