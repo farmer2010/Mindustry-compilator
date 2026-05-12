@@ -101,6 +101,7 @@ def get_error(err_code, line_ind, pos, line):
         res += "Invalid number format"
     elif err_code == 40:
         res += "; expected"
+    res += "\n\n"
     return(res)
 
 #+   1 уровень - токенайзер
@@ -201,11 +202,13 @@ def compile(code):
             if line != "":
                 lines_level1.append(Token(line, line=line_ind, pos=curpos))
                 line = ""
+
     #
     #уровень 1.5
     #проверка синтаксиса
     #
     print(lines_level1)
+    error = 0
     for i in range(len(lines_level1)):
         token = lines_level1[i]
         if i < len(lines_level1) - 1 and token.type == "variable" and lines_level1[i + 1] == "=":
@@ -228,7 +231,7 @@ def compile(code):
                         (tk == ")" and next_tk.type != "special symbol")
                     ):
                         console += get_error(40, tk.line, tk.pos + len(tk.text), code.split("\n")[tk.line])
-                        return(console, "")
+                        error = 1
                 k += 1
         if token.type == "command" and token != "if" and token != "else" and token != "for" and token != "while":
             k = i + 1
@@ -242,11 +245,20 @@ def compile(code):
                 #
                 if tk == ")" and bra_count == 0 and lines_level1[k + 1] != ";":
                     console += get_error(40, tk.line, tk.pos + len(tk.text), code.split("\n")[tk.line])
-                    return (console, "")
+                    error = 1
                 if tk == ";":
                     break
                 #
                 k += 1
+        if (token.text[0] in numbers or token.text[0] == "-") and token != "-":
+            try:
+                float(token.text)
+            except:
+                console += get_error(30, token.line, token.pos, code.split("\n")[token.line])
+                error = 1
+    #
+    if error:
+        return(console, "")
     #
     #второй уровень
     #разделение кода на блоки
@@ -639,6 +651,8 @@ print(2);
 }else{
 print(3);
 }
+a = 2b222;
+b = -1....2;
 """
 
 res = compile(text)
