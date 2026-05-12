@@ -4,6 +4,7 @@ import pyperclip
 words = ["if", "else", "while", "for", "num", "str", "bool", "obj", "id", "break", "continue", "null", "print", "printflush", "stop", "end"]
 symb = ["{", "}", "(", ")", "=", "+=", "-=", "*=", "/=", "%=", "~/=", "+", "-", "*", "**", "/", "~/", "%", "%%", "==", ">", "<", ">=", "<=", "!=", "'", '"', "++", "--", "===", "<<", ">>", ">>>", "!", "&&", "||", "&", "^", ";"]
 operations = ["+", "-", "*", "/", "~/", "%", "%%", "**", ">", "<", ">=", "<=", "==", "===", "!=", "!", "&&", "||", "^", "&", "<<", ">>", ">>>"]
+operations_un = ["++", "--"]
 operations_1_param = ["!"]
 spaces = [" ", "\t", "\n"]
 numbers = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
@@ -92,15 +93,19 @@ def get_error(err_code, line_ind, pos, line):
     res += line + "\n"
     res += " " * pos + "^\n"
     if err_code == 10:
-        pass
+        res += "Expected }"
     elif err_code == 11:
-        pass
+        res += "Expected {"
+    elif err_code == 12:
+        res += "Expected )"
+    elif err_code == 13:
+        res += "Expected ("
     elif err_code == 20:
         res += 'Unknown command ""'
     elif err_code == 30:
         res += "Invalid number format"
     elif err_code == 40:
-        res += "; expected"
+        res += "Expected ;"
     res += "\n\n"
     return(res)
 
@@ -124,9 +129,10 @@ def get_error(err_code, line_ind, pos, line):
 4x - отсутствует ; в конце строки
 5x - неверное количество кавычек
 
-10 - неверное количество фигурных скобок
-11 - неверное количество круглых скобок
-12 - неверное количество квадратных скобок
+10 - отсутствует }
+11 - отсутствует {
+12 - отсутствует )
+13 - отсутствует (
 
 20 - неизвестная команда
 
@@ -211,54 +217,82 @@ def compile(code):
     error = 0
     for i in range(len(lines_level1)):
         token = lines_level1[i]
-        if i < len(lines_level1) - 1 and token.type == "variable" and lines_level1[i + 1] == "=":
+        next_token = lines_level1[i + 1] if i < len(lines_level1) - 1 else ""
+        if i < len(lines_level1) and token.type == "variable" and lines_level1[i + 1] == "=":
             k = i + 2
             bra_count = 0
-            while k < len(lines_level1) - 1:
+            while k < len(lines_level1):
                 tk = lines_level1[k]
+                next_tk = lines_level1[k + 1] if k < len(lines_level1) - 1 else ""
                 if tk == "(":
                     bra_count += 1
                 if tk == ")":
                     bra_count -= 1
                 #
-                if k < len(lines_level1) - 1:
-                    next_tk = lines_level1[k + 1]
-                    if tk == ";":
-                        break
-                    if bra_count == 0 and next_tk != ";" and (
-                        ((tk.type == "number" or tk.type == "variable" or tk.type == "string") and (next_tk not in operations) and next_tk != ")") or
-                        (tk.type in operations and next_tk.type != "number" and next_tk.type != "variable" and next_tk != "!") or
-                        (tk == ")" and next_tk.type != "special symbol")
-                    ):
-                        console += get_error(40, tk.line, tk.pos + len(tk.text), code.split("\n")[tk.line])
-                        error = 1
+                if tk == ";":
+                    break
+                if bra_count == 0 and next_tk != ";" and (
+                    ((tk.type == "number" or tk.type == "variable" or tk.type == "string") and (next_tk not in operations) and next_tk != ")") or
+                    (tk.type in operations and next_tk.type != "number" and next_tk.type != "variable" and next_tk != "!") or
+                    (tk == ")" and next_tk.type != "special symbol")
+                ):
+                    console += get_error(40, tk.line, tk.pos + len(tk.text), code.split("\n")[tk.line])
+                    error = 1
                 k += 1
         if token.type == "command" and token != "if" and token != "else" and token != "for" and token != "while":
             k = i + 1
             bra_count = 0
-            while k < len(lines_level1) - 1:
+            while k < len(lines_level1):
                 tk = lines_level1[k]
+                next_tk = lines_level1[k + 1] if k < len(lines_level1) - 1 else ""
                 if tk == "(":
                     bra_count += 1
                 if tk == ")":
                     bra_count -= 1
                 #
-                if tk == ")" and bra_count == 0 and lines_level1[k + 1] != ";":
+                if tk == ")" and bra_count == 0 and next_tk != ";":
                     console += get_error(40, tk.line, tk.pos + len(tk.text), code.split("\n")[tk.line])
                     error = 1
                 if tk == ";":
                     break
                 #
                 k += 1
+        if token in operations_un:
+            if next_token != ";":
+                console += get_error(40, token.line, token.pos + len(token.text), code.split("\n")[token.line])
+                error = 1
         if (token.text[0] in numbers or token.text[0] == "-") and token != "-":
             try:
                 float(token.text)
             except:
                 console += get_error(30, token.line, token.pos, code.split("\n")[token.line])
                 error = 1
-    #
-    if error:
-        return(console, "")
+        if token == "{" or token == "}" or token == "(" or token == ")":
+            k = i
+            bra_count = 0
+            while (k < len(lines_level1) and (token == "{" or token == "(")) or (k > 0 and (token == "}" or token == ")")):
+                tk = lines_level1[k]
+                if token == "{" or token == "}":
+                    if tk == "{":
+                        bra_count += 1
+                    if tk == "}":
+                        bra_count -= 1
+                else:
+                    if tk == "(":
+                        bra_count += 1
+                    if tk == ")":
+                        bra_count -= 1
+                #
+                if bra_count == 0:
+                    break
+                #
+                if token == "{" or token == "(":
+                    k += 1
+                else:
+                    k -= 1
+            if bra_count != 0:
+                console += get_error(10 + 2 * (token == "(" or token == ")") + 1 * (token == "}" or token == ")"), token.line, token.pos, code.split("\n")[token.line])
+                error = 1
     #
     #второй уровень
     #разделение кода на блоки
@@ -276,6 +310,13 @@ def compile(code):
         if (token == ";" and not for_cycle) or token == "}" or token == "{":
             lines_level2.append(cmd)
             cmd = []
+    #
+    #еще проверка синтаксиса
+    #
+
+    #
+    if error:
+        return(console, "")
     #
     #третий уровень
     #разделение цикла for
@@ -637,7 +678,7 @@ def compile(code):
 
 text = """
 num a = (1 + !2222222) + 1 + (1 * 2);
-for (num i = 0; i < 10; i++){
+for (num i = 0; i < 10; i+=1){
 print(i + 2*2);
 }
 //this is comment
@@ -651,8 +692,6 @@ print(2);
 }else{
 print(3);
 }
-a = 2b222;
-b = -1....2;
 """
 
 res = compile(text)
